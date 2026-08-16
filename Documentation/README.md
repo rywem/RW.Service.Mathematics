@@ -1,5 +1,9 @@
 # Documentation
 
+> **Handing this repo to someone (or some agent) new? Start with [HANDOFF.md](HANDOFF.md).**
+> Collection-wide context: [`Solutions/Mathematics/HANDOFF.md`](../../Solutions/Mathematics/HANDOFF.md)
+
+
 This repository is part of the **RW Mathematics** project collection. The canonical
 documentation lives in the modules repository and covers every repo in the collection:
 
