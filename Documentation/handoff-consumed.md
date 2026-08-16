@@ -2,7 +2,7 @@
 
 A thin, exception-safe facade over **AngouriMath** (MIT). Wrapped by the `algebra` module.
 
-**Read [`Solutions/Mathematics/HANDOFF.md`](../../Solutions/Mathematics/HANDOFF.md) first.**
+**Read [`Solutions/Mathematics/handoff-consumed.md`](../../Solutions/Mathematics/handoff-consumed.md) first.**
 
 **Path:** `E:\Development\Projects\RW.Service.Mathematics`
 **Branch:** `feature/rw-math-workbench` (pushed to `github.com/rywem/RW.Service.Mathematics`)
