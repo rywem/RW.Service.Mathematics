@@ -73,4 +73,4 @@ stronger oracle.
 
 AngouriMath is **MIT** — no copyleft, safe to ship, including to the App Store. This matters:
 it is one of only two third-party dependencies in the portable core, and its licence is part
-of why an iOS port stays viable. See `RW.Mathematics.Modules/Documentation/LICENSING.md`.
+of why an iOS port stays viable. See `RW.Modules.Mathematics/Documentation/LICENSING.md`.
