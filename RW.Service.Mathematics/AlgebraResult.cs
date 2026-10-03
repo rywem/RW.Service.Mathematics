@@ -37,4 +37,35 @@ namespace RW.Service.Mathematics
 
         public override string ToString() => Success ? Result : $"Error: {Error}";
     }
+
+    /// <summary>
+    /// The outcome of an operation whose answer is a structured object rather than a line of
+    /// text — a truth table, a matrix, a set.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not derived from <see cref="AlgebraResult"/>. That class promises a
+    /// <c>Result</c> string and a <c>Latex</c> string, and inventing those for a table would
+    /// mean choosing a rendering in the engine, where the engine has no business deciding how a
+    /// client displays anything. The client gets the data and renders it.
+    /// </remarks>
+    /// <typeparam name="T">The shape of the answer.</typeparam>
+    public sealed class AlgebraResult<T>
+    {
+        public string Input { get; init; } = string.Empty;
+
+        /// <summary>The answer, or <see langword="null"/> when <see cref="Success"/> is false.</summary>
+        public T? Value { get; init; }
+
+        public bool Success { get; init; }
+
+        public string? Error { get; init; }
+
+        public static AlgebraResult<T> Ok(string input, T value)
+            => new() { Input = input, Value = value, Success = true };
+
+        public static AlgebraResult<T> Fail(string input, string error)
+            => new() { Input = input, Success = false, Error = error };
+
+        public override string ToString() => Success ? $"{Value}" : $"Error: {Error}";
+    }
 }

@@ -10,7 +10,7 @@ namespace RW.Service.Mathematics.Solvers
     /// Every method returns an <see cref="AlgebraResult"/> rather than throwing, so the
     /// UI can bind directly to the outcome. See https://am.angouri.org/ for the engine.
     /// </summary>
-    public class AngouriMathService
+    public partial class AngouriMathService
     {
         /// <summary>Simplify an expression, e.g. "2x + 3x - 1" &rarr; "5*x - 1".</summary>
         public AlgebraResult Simplify(string expression)
