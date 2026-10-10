@@ -333,6 +333,7 @@ namespace RW.Service.Mathematics.Solvers
                 var work = Task.Run(() =>
                 {
                     MathS.Multithreading.SetLocalCancellationToken(budget.Token);
+                    _budget = budget.Token;
                     return operation();
                 }, budget.Token);
 
@@ -352,6 +353,13 @@ namespace RW.Service.Mathematics.Solvers
                     : inner.Message);
             }
         }
+
+        /// <summary>
+        /// The budget of the operation running on this thread, for code in this class that
+        /// loops on its own (the engine only checks its token inside its own recursion) or
+        /// that wants to give one step a smaller slice of the same budget.
+        /// </summary>
+        [ThreadStatic] private static CancellationToken _budget;
 
         private static string GaveUpMessage =>
             $"Gave up after {OperationBudget.TotalSeconds:0} seconds. Some expressions have no " +

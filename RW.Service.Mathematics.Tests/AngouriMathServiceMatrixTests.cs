@@ -134,21 +134,28 @@ namespace RW.Service.Mathematics.Tests
             => Assert.Contains("square", Fail("inverse", Row("a", "b")));
 
         // ---------------------------------------------------------------- rref and rank
-        // Refused on purpose. AngouriMath 1.3.0 answers both, wrongly: rank([x a; x a]) is 2,
-        // and rref([a b; c d]) has NaN cells. If an upgrade ever fixes that, these tests are
-        // the reminder to check before switching them on.
+        // These two cases are the ones AngouriMath 1.3.0 itself gets wrong (rank 2; NaN cells).
+        // They are answered by the elimination written in this repo; see the Elimination tests.
 
-        [Theory]
-        [InlineData("rref")]
-        [InlineData("rank")]
-        public void RrefAndRank_AreRefusedRatherThanWrong(string operation)
-            => Assert.Contains("not available", Fail(operation, Row("x", "a"), Row("x", "a")));
+        [Fact]
+        public void Rank_OfRepeatedRow_IsOne_WhereTheLibraryItselfSaysTwo()
+            => Assert.Equal("1", Run("rank", Row("x", "a"), Row("x", "a")).Scalar);
+
+        [Fact]
+        public void Rref_OfGenericTwoByTwo_IsIdentity_WhereTheLibraryItselfGivesNaN()
+        {
+            var rref = Run("rref", Row("a", "b"), Row("c", "d")).Cells!;
+            Assert.Equal(1, At(rref[0][0]), 9);
+            Assert.Equal(0, At(rref[0][1]), 9);
+            Assert.Equal(0, At(rref[1][0]), 9);
+            Assert.Equal(1, At(rref[1][1]), 9);
+        }
 
         // ---------------------------------------------------------------- refusals
 
         [Fact]
         public void UnknownOperation_ListsWhatIsAvailable()
-            => Assert.Contains("determinant", Fail("solve", Row("a", "b"), Row("c", "d")));
+            => Assert.Contains("determinant", Fail("eigenvalues", Row("a", "b"), Row("c", "d")));
 
         [Fact]
         public void RaggedRows_AreRefused()

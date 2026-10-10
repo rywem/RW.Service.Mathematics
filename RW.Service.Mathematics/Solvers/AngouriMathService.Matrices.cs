@@ -7,7 +7,15 @@ namespace RW.Service.Mathematics.Solvers
     /// <param name="Cells">The resulting matrix, one expression per cell; null for a scalar answer.</param>
     /// <param name="Scalar">The resulting expression; null for a matrix answer.</param>
     /// <param name="Latex">The answer as LaTeX, whichever shape it has.</param>
-    public sealed record SymbolicMatrixAnswer(string[][]? Cells, string? Scalar, string Latex);
+    /// <param name="Kind">For "solve" only: "unique", "infinite" or "none".</param>
+    /// <param name="Condition">
+    /// Set when the answer is generic: it holds wherever this expression is non-zero, and may
+    /// be wrong where it vanishes. Null when the answer holds unconditionally.
+    /// </param>
+    /// <param name="Notes">Anything the zero test could not settle; null when there is nothing to say.</param>
+    public sealed record SymbolicMatrixAnswer(
+        string[][]? Cells, string? Scalar, string Latex,
+        string? Kind = null, string? Condition = null, IReadOnlyList<string>? Notes = null);
 
     /// <summary>
     /// Linear algebra on matrices whose entries are expressions rather than numbers.
@@ -19,19 +27,18 @@ namespace RW.Service.Mathematics.Solvers
     /// simplifies what comes back.
     /// </para>
     /// <para>
-    /// <b>Rank and RREF are deliberately not offered.</b> AngouriMath 1.3.0 has both, and both
-    /// are wrong on symbolic input: the rank of <c>[x a; x a]</c> comes back as 2, and the RREF
-    /// of <c>[a b; c d]</c> comes back with <c>NaN</c> cells. Elimination needs to decide
-    /// whether a pivot like <c>x - x</c> is zero, and it does not simplify before deciding. A
-    /// refusal is better than a confident wrong answer; doing these properly means writing
-    /// fraction-free elimination here, which has not been done.
+    /// <b>AngouriMath's own Rank and RREF are never called.</b> Both are wrong on symbolic
+    /// input: the rank of <c>[x a; x a]</c> comes back as 2, and the RREF of <c>[a b; c d]</c>
+    /// comes back with <c>NaN</c> cells, because its zero test is structural and does not see
+    /// that <c>x - x</c> is zero. Everything that needs elimination is routed to
+    /// <see cref="SymbolicElimination"/>, which is written here.
     /// </para>
     /// </remarks>
     public partial class AngouriMathService
     {
         /// <summary>The operations <see cref="SymbolicMatrix"/> accepts.</summary>
         public static readonly IReadOnlyList<string> SymbolicMatrixOperations =
-            new[] { "determinant", "inverse", "transpose" };
+            new[] { "determinant", "inverse", "transpose" }.Concat(SymbolicEliminationOperations).ToArray();
 
         /// <summary>
         /// Runs <paramref name="operation"/> on the matrix whose cells are the given expressions.
@@ -39,7 +46,9 @@ namespace RW.Service.Mathematics.Solvers
         /// <param name="operation">One of <see cref="SymbolicMatrixOperations"/>.</param>
         /// <param name="cells">Rows of expressions. Every row must be the same length.</param>
         public AlgebraResult<SymbolicMatrixAnswer> SymbolicMatrix(string operation, string[][] cells)
-            => Attempt(operation, () =>
+            => SymbolicEliminationOperations.Contains(operation)
+            ? SymbolicElimination(operation, cells)
+            : Attempt(operation, () =>
             {
                 if (cells is not { Length: > 0 } || cells[0].Length == 0)
                     throw new ArgumentException("The matrix is empty.");
