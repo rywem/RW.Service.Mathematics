@@ -27,28 +27,46 @@ namespace RW.Service.Mathematics.Solvers
     /// simplifies what comes back.
     /// </para>
     /// <para>
-    /// <b>AngouriMath's own Rank and RREF are never called.</b> Both are wrong on symbolic
-    /// input: the rank of <c>[x a; x a]</c> comes back as 2, and the RREF of <c>[a b; c d]</c>
-    /// comes back with <c>NaN</c> cells, because its zero test is structural and does not see
-    /// that <c>x - x</c> is zero. Everything that needs elimination is routed to
-    /// <see cref="SymbolicElimination"/>, which is written here.
+    /// <b>AngouriMath's own matrix algebra is not used, except to transpose.</b> On symbolic
+    /// input its Rank and RREF are wrong (rank of <c>[x a; x a]</c> is 2; RREF of
+    /// <c>[a b; c d]</c> has NaN cells), because its zero test is structural and does not see
+    /// that <c>x - x</c> is zero. Its Determinant is wrong too, less often: the circulant
+    /// <c>[a b c; b c a; c a b]</c> comes back with a spurious <c>6b⁵/(ac − b²)</c> term, 1550
+    /// at (2, 3, 5) where the true value is −70. A dense symbolic 4×4 also exhausts the budget.
     /// </para>
     /// </remarks>
     public partial class AngouriMathService
     {
         /// <summary>The operations <see cref="SymbolicMatrix"/> accepts.</summary>
         public static readonly IReadOnlyList<string> SymbolicMatrixOperations =
-            new[] { "determinant", "inverse", "transpose" }.Concat(SymbolicEliminationOperations).ToArray();
+            new[] { "transpose" }.Concat(SymbolicEliminationOperations).ToArray();
 
         /// <summary>
         /// Runs <paramref name="operation"/> on the matrix whose cells are the given expressions.
+        /// This is the one entry point; it chooses how the work is done.
         /// </summary>
+        /// <remarks>
+        /// Determinant and inverse are tried exactly first (<see cref="ExactMatrix"/>), which
+        /// succeeds whenever every cell is a rational function — the common case, and the one
+        /// where a wrong answer is least forgivable. Anything it cannot take (<c>sin</c>,
+        /// <c>sqrt</c>, an intermediate result grown too large) falls through to
+        /// <see cref="SymbolicElimination"/>, which also produces the error message when the
+        /// request itself is at fault.
+        /// </remarks>
         /// <param name="operation">One of <see cref="SymbolicMatrixOperations"/>.</param>
         /// <param name="cells">Rows of expressions. Every row must be the same length.</param>
         public AlgebraResult<SymbolicMatrixAnswer> SymbolicMatrix(string operation, string[][] cells)
-            => SymbolicEliminationOperations.Contains(operation)
-            ? SymbolicElimination(operation, cells)
-            : Attempt(operation, () =>
+        {
+            if (operation is "determinant" or "inverse")
+            {
+                var exact = ExactMatrix(operation, cells);
+                if (exact.Success) return exact;
+            }
+
+            if (operation != "transpose")
+                return SymbolicElimination(operation, cells);
+
+            return Attempt(operation, () =>
             {
                 if (cells is not { Length: > 0 } || cells[0].Length == 0)
                     throw new ArgumentException("The matrix is empty.");
@@ -60,35 +78,9 @@ namespace RW.Service.Mathematics.Solvers
                     for (int c = 0; c < cells[0].Length; c++)
                         grid[r, c] = MathS.FromString(cells[r][c]);
 
-                Matrix matrix = MathS.Matrix(grid);
-                bool square = matrix.RowCount == matrix.ColumnCount;
-
-                switch (operation)
-                {
-                    case "determinant":
-                        if (!square) throw new ArgumentException(NeedsSquare("A determinant", matrix));
-                        return Scalar(matrix.Determinant!.Simplify());
-
-                    case "inverse":
-                        if (!square) throw new ArgumentException(NeedsSquare("An inverse", matrix));
-                        // Checked first: asked for the inverse of a singular matrix the engine
-                        // returns a grid of NaN rather than refusing.
-                        if (matrix.Determinant!.Simplify() == 0)
-                            throw new ArgumentException("The determinant is 0, so the matrix has no inverse.");
-                        return Grid(matrix.Inverse);
-
-                    case "transpose":
-                        return Grid(matrix.T);
-
-                    default:
-                        throw new ArgumentException(
-                            $"'{operation}' is not available for a matrix with symbolic entries. " +
-                            $"Available: {string.Join(", ", SymbolicMatrixOperations)}.");
-                }
+                return Grid(MathS.Matrix(grid).T);
             });
-
-        private static string NeedsSquare(string what, Matrix matrix)
-            => $"{what} needs a square matrix; this one is {matrix.RowCount}×{matrix.ColumnCount}.";
+        }
 
         private static SymbolicMatrixAnswer Scalar(Entity value)
             => new(null, value.Stringize(), value.Latexise());

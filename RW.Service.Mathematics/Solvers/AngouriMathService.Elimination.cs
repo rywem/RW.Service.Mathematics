@@ -32,7 +32,7 @@ namespace RW.Service.Mathematics.Solvers
     {
         /// <summary>The operations <see cref="SymbolicElimination"/> accepts.</summary>
         public static readonly IReadOnlyList<string> SymbolicEliminationOperations =
-            new[] { "rref", "rank", "nullspace", "solve", "trace", "adjugate" };
+            new[] { "rref", "rank", "nullspace", "solve", "trace", "adjugate", "determinant", "inverse" };
 
         /// <summary>Largest row or column count accepted; minors are expanded in 2^n steps.</summary>
         public const int SymbolicEliminationMaxSize = 8;
@@ -99,6 +99,32 @@ namespace RW.Service.Mathematics.Solvers
                         return Grid(adj, work);
                     }
 
+                    case "determinant":
+                    {
+                        if (m != n) throw new ArgumentException($"A determinant needs a square matrix; this one is {m}×{n}.");
+                        int[] all = Enumerable.Range(0, n).ToArray();
+                        return Scalar(work.Tidy(work.Minor(all, all)));
+                    }
+
+                    case "inverse":
+                    {
+                        if (m != n) throw new ArgumentException($"An inverse needs a square matrix; this one is {m}×{n}.");
+                        int[] all = Enumerable.Range(0, n).ToArray();
+                        if (work.IsZeroMinor(all, all))
+                            throw new ArgumentException("The determinant is 0, so the matrix has no inverse.");
+
+                        // A⁻¹ = adj(A) / det(A), every entry one quotient of two minors.
+                        Entity det = work.Minor(all, all);
+                        var inverse = new Entity[n, n];
+                        for (int r = 0; r < n; r++)
+                            for (int c = 0; c < n; c++)
+                            {
+                                Entity minor = work.Minor(Without(n, c), Without(n, r));
+                                inverse[r, c] = work.Tidy(((r + c) % 2 == 0 ? minor : -minor) / det);
+                            }
+                        return Grid(inverse, work) with { Notes = work.NotesOrNull };
+                    }
+
                     case "rank":
                         work.FindPivots();
                         return Scalar(work.Pivots.Count) with { Condition = work.Condition(), Notes = work.NotesOrNull };
@@ -153,8 +179,8 @@ namespace RW.Service.Mathematics.Solvers
 
                     default:
                         throw new ArgumentException(
-                            $"'{operation}' is not available here. " +
-                            $"Available: {string.Join(", ", SymbolicEliminationOperations)}.");
+                            $"'{operation}' is not available for a matrix with symbolic entries. " +
+                            $"Available: {string.Join(", ", SymbolicMatrixOperations)}.");
                 }
             });
 
@@ -448,7 +474,7 @@ namespace RW.Service.Mathematics.Solvers
                 => Judge(_probed.Select(grid =>
                     MathS.Settings.PrecisionErrorZeroRange.As(Negligible, () => Minor(rows, columns, grid))));
 
-            private bool IsZeroMinor(IReadOnlyList<int> rows, IReadOnlyList<int> columns)
+            public bool IsZeroMinor(IReadOnlyList<int> rows, IReadOnlyList<int> columns)
             {
                 Verdict probed = ProbeMinor(rows, columns);
                 return probed != Verdict.NonZero && IsZero(Minor(rows, columns), probed);
