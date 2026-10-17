@@ -70,7 +70,7 @@ namespace RW.Service.Mathematics.Solvers
                 for (int r = 0; r < m; r++)
                     for (int c = 0; c < n; c++)
                     {
-                        a[r, c] = MathS.FromString(cells[r][c]).InnerSimplified;
+                        a[r, c] = Parse(cells[r][c]).InnerSimplified;
                         if (a[r, c] is Number.Complex { IsFinite: false })
                             throw new ArgumentException($"The cell '{cells[r][c]}' is not a finite number.");
                     }
@@ -301,7 +301,7 @@ namespace RW.Service.Mathematics.Solvers
                 {
                     int denominator = primes[random.Next(primes.Length)];
                     int numerator = random.Next(denominator / 4, denominator * 3) * (random.Next(2) == 0 ? 1 : -1);
-                    return (Entity)MathS.FromString($"{numerator}/{denominator}");
+                    return (Entity)Parse($"{numerator}/{denominator}");
                 }).ToArray()).ToArray();
 
                 // Substitution commutes with taking a determinant, so a minor is probed by

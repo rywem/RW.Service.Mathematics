@@ -79,6 +79,17 @@ namespace RW.Service.Mathematics.Tests
             Assert.Equal(expected, Norm(r.Result));
         }
 
+        [Fact]
+        public void Differentiate_ReadsExpAsTheExponential()
+        {
+            // AngouriMath alone read exp(x) as a variable "exp" times x: d/dx x*exp(x) was "2 * exp * x".
+            var r = _svc.Differentiate("x*exp(x)");
+            Assert.True(r.Success, r.Error);
+            var at1 = _svc.Evaluate($"({r.Result}) - 2*e^1".Replace("x", "1"));
+            Assert.True(at1.Success, at1.Error);
+            Assert.Equal(0, double.Parse(at1.Result, System.Globalization.CultureInfo.InvariantCulture), 9);
+        }
+
         // ---------------------------------------------------------------- Integrate
 
         [Fact]

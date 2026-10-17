@@ -43,8 +43,8 @@ namespace RW.Service.Mathematics.Solvers
             => Run(expression, () =>
             {
                 Variable v = MathS.Var(Named(variable));
-                Entity destination = MathS.FromString(NormaliseInfinity(approaching));
-                Entity body = MathS.FromString(expression);
+                Entity destination = Parse(NormaliseInfinity(approaching));
+                Entity body = Parse(expression);
 
                 return ParseDirection(direction) is { } from
                     ? body.Limit(v, destination, from).Simplify()
@@ -62,9 +62,9 @@ namespace RW.Service.Mathematics.Solvers
                     throw new ArgumentException("Ask for between 1 and 30 terms.");
 
                 return MathS.Series.Taylor(
-                    MathS.FromString(expression),
+                    Parse(expression),
                     terms,
-                    (MathS.Var(Named(variable)), MathS.FromString(around))).Simplify();
+                    (MathS.Var(Named(variable)), Parse(around))).Simplify();
             });
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace RW.Service.Mathematics.Solvers
                     throw new ArgumentException("Order must be between 1 and 20.");
 
                 Variable v = MathS.Var(Named(variable));
-                Entity result = MathS.FromString(expression);
+                Entity result = Parse(expression);
                 for (int i = 0; i < order; i++)
                     result = result.Differentiate(v);
 
@@ -100,20 +100,20 @@ namespace RW.Service.Mathematics.Solvers
             => Run(expression, () =>
             {
                 Variable v = MathS.Var(Named(variable));
-                Entity antiderivative = MathS.FromString(expression).Integrate(v).Simplify();
+                Entity antiderivative = Parse(expression).Integrate(v).Simplify();
 
                 // F(b) - F(a). Preferred over AngouriMath's sampling integrator, which is
                 // obsolete in 1.3.0, because when the antiderivative is found in closed form
                 // this is exact rather than approximate.
-                Entity upper = antiderivative.Substitute(v, MathS.FromString(to));
-                Entity lower = antiderivative.Substitute(v, MathS.FromString(from));
+                Entity upper = antiderivative.Substitute(v, Parse(to));
+                Entity lower = antiderivative.Substitute(v, Parse(from));
                 return (upper - lower).Simplify();
             });
 
         /// <summary>Maxima's <c>subst(value, var, expr)</c> — replace a variable, then simplify.</summary>
         public AlgebraResult Substitute(string expression, string variable, string value)
-            => Run(expression, () => MathS.FromString(expression)
-                .Substitute(MathS.Var(Named(variable)), MathS.FromString(value))
+            => Run(expression, () => Parse(expression)
+                .Substitute(MathS.Var(Named(variable)), Parse(value))
                 .Simplify());
 
         /// <summary>
@@ -226,7 +226,7 @@ namespace RW.Service.Mathematics.Solvers
                 return Array.Empty<(System.Numerics.BigInteger, int)>();
 
             var factors = new List<(System.Numerics.BigInteger, int)>();
-            foreach (var (prime, power) in MathS.NumberTheory.Factorize((Number.Integer)MathS.FromString(n.ToString())))
+            foreach (var (prime, power) in MathS.NumberTheory.Factorize((Number.Integer)Parse(n.ToString())))
                 factors.Add((System.Numerics.BigInteger.Parse(prime.Stringize()), int.Parse(power.Stringize())));
 
             return factors;
@@ -239,7 +239,7 @@ namespace RW.Service.Mathematics.Solvers
 
             // Accept an expression ("2^10", "6*7") as well as a literal, because the toolbox
             // inserts call templates that a user then edits.
-            Entity simplified = MathS.FromString(value).Simplify();
+            Entity simplified = Parse(value).Simplify();
             if (simplified is Number.Integer integer)
                 return System.Numerics.BigInteger.Parse(integer.Stringize());
 
@@ -251,13 +251,13 @@ namespace RW.Service.Mathematics.Solvers
         {
             int eq = equation.IndexOf('=');
             if (eq < 0)
-                return MathS.FromString(equation);
+                return Parse(equation);
 
             string lhs = equation[..eq].Trim(), rhs = equation[(eq + 1)..].Trim();
             if (lhs.Length == 0 || rhs.Length == 0)
                 throw new FormatException("An equation needs an expression on both sides of '='.");
 
-            return MathS.FromString($"({lhs}) - ({rhs})");
+            return Parse($"({lhs}) - ({rhs})");
         }
 
         private static ApproachFrom? ParseDirection(string? direction) => direction?.Trim().ToLowerInvariant() switch

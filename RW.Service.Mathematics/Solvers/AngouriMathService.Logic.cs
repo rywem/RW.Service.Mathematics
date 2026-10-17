@@ -63,7 +63,7 @@ namespace RW.Service.Mathematics.Solvers
         public AlgebraResult<TruthTable> BuildTruthTable(string expression, IReadOnlyList<string>? variables = null)
             => Attempt<TruthTable>(expression, () =>
             {
-                Entity parsed = MathS.FromString(expression);
+                Entity parsed = Parse(expression);
                 var columns = ResolveVariables(parsed, variables);
 
                 // AngouriMath returns the table as a matrix: one row per assignment, the
@@ -133,7 +133,7 @@ namespace RW.Service.Mathematics.Solvers
 
             return Run(echo, () =>
             {
-                Entity a = MathS.FromString(left), b = MathS.FromString(right);
+                Entity a = Parse(left), b = Parse(right);
 
                 var union = a.Vars.Concat(b.Vars)
                     .Select(v => v.Name).Distinct().OrderBy(n => n, StringComparer.Ordinal)

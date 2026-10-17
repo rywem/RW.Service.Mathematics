@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using AngouriMath;
 using AngouriMath.Extensions;
 using static AngouriMath.Entity;
@@ -73,6 +74,13 @@ namespace RW.Service.Mathematics.Solvers
 
         // ----------------------------------------------------------------- helpers
 
+        // AngouriMath has no exp(): it reads exp(x) as a variable "exp" times x, so x*exp(x)
+        // differentiated to "2 * exp * x". Rewrite the call to e^(...) before parsing.
+        private static readonly Regex ExpCall = new(@"\bexp\s*\(", RegexOptions.Compiled);
+
+        /// <summary>Every expression the service reads goes through here.</summary>
+        private static Entity Parse(string text) => MathS.FromString(ExpCall.Replace(text, "e^("));
+
         private static AlgebraResult Transform(string expression, Func<Entity, Entity> operation)
         {
             if (string.IsNullOrWhiteSpace(expression))
@@ -80,7 +88,7 @@ namespace RW.Service.Mathematics.Solvers
 
             try
             {
-                Entity parsed = MathS.FromString(expression);
+                Entity parsed = Parse(expression);
                 Entity result = operation(parsed);
                 return AlgebraResult.Ok(expression, result.Stringize(), result.Latexise());
             }
@@ -99,14 +107,14 @@ namespace RW.Service.Mathematics.Solvers
         {
             int eq = equation.IndexOf('=');
             if (eq < 0)
-                return MathS.FromString($"{equation} = 0");
+                return Parse($"{equation} = 0");
 
             string lhs = equation[..eq].Trim();
             string rhs = equation[(eq + 1)..].Trim();
             if (lhs.Length == 0 || rhs.Length == 0)
                 throw new FormatException("An equation needs an expression on both sides of '='.");
 
-            return MathS.FromString(equation);
+            return Parse(equation);
         }
 
         private static List<string> EnumerateSolutions(Set set)

@@ -76,7 +76,7 @@ namespace RW.Service.Mathematics.Solvers
                 var grid = new Entity[cells.Length, cells[0].Length];
                 for (int r = 0; r < cells.Length; r++)
                     for (int c = 0; c < cells[0].Length; c++)
-                        grid[r, c] = MathS.FromString(cells[r][c]);
+                        grid[r, c] = Parse(cells[r][c]);
 
                 return Grid(MathS.Matrix(grid).T);
             });
