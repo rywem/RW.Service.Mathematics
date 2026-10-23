@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 using AngouriMath;
 using AngouriMath.Extensions;
@@ -46,7 +45,7 @@ namespace RW.Service.Mathematics.Solvers
             if (string.IsNullOrWhiteSpace(equation))
                 return AlgebraResult.Fail(equation ?? string.Empty, "Enter an equation to solve.");
 
-            try
+            return Budgeted(equation, () =>
             {
                 Entity target = ToSolvableEntity(equation);
                 var variableEntity = MathS.Var(variable);
@@ -60,12 +59,7 @@ namespace RW.Service.Mathematics.Solvers
                     : simplified.Stringize();
 
                 return AlgebraResult.Ok(equation, pretty, $"{variable} \\in {simplified.Latexise()}", solutions);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Solve failed for '{equation}': {ex}");
-                return AlgebraResult.Fail(equation, Describe(ex));
-            }
+            }, result => result);
         }
 
         /// <summary>Return the LaTeX form of an expression without otherwise changing it.</summary>
@@ -82,22 +76,7 @@ namespace RW.Service.Mathematics.Solvers
         private static Entity Parse(string text) => MathS.FromString(ExpCall.Replace(text, "e^("));
 
         private static AlgebraResult Transform(string expression, Func<Entity, Entity> operation)
-        {
-            if (string.IsNullOrWhiteSpace(expression))
-                return AlgebraResult.Fail(expression ?? string.Empty, "Enter an expression.");
-
-            try
-            {
-                Entity parsed = Parse(expression);
-                Entity result = operation(parsed);
-                return AlgebraResult.Ok(expression, result.Stringize(), result.Latexise());
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Operation failed for '{expression}': {ex}");
-                return AlgebraResult.Fail(expression, Describe(ex));
-            }
-        }
+            => Run(expression, () => operation(Parse(expression)));
 
         /// <summary>
         /// Produce an equation <i>statement</i> for AngouriMath's solver. A full "lhs = rhs"

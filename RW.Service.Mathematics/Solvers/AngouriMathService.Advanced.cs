@@ -321,38 +321,44 @@ namespace RW.Service.Mathematics.Solvers
                 return onFailure("Enter an expression.");
 
             using var budget = new CancellationTokenSource(OperationBudget);
+            T value = default!;
+            Exception? error = null;
 
-            try
+            // AngouriMath checks a *thread-local* cancellation token at its recursion points,
+            // so the token is installed on the thread doing the work rather than passed in. That
+            // is what makes an overrunning call genuinely stop: it throws
+            // OperationCanceledException from inside the engine rather than running on
+            // unattended. Verified against the non-terminating case -- limit(1/x, x, 0)
+            // two-sided -- which aborts on the budget.
+            //
+            // A thread of its own with a big stack, not the pool's: some inputs recurse deeper
+            // than a pool thread's stack before the budget runs out (integrating
+            // 1/(x^12 + x^7 + 3) did), and a stack overflow cannot be caught -- it takes the
+            // whole server down. The stack is reserved, not committed, so it costs nothing
+            // until it is used.
+            var worker = new Thread(() =>
             {
-                // AngouriMath checks a *thread-local* cancellation token at its recursion points,
-                // so the token has to be installed on the worker thread rather than passed in.
-                // That is what makes an overrunning call genuinely stop: it throws
-                // OperationCanceledException from inside the engine rather than running on
-                // unattended. Verified against the non-terminating case -- limit(1/x, x, 0)
-                // two-sided -- which aborts on the budget instead of spinning forever.
-                var work = Task.Run(() =>
-                {
-                    MathS.Multithreading.SetLocalCancellationToken(budget.Token);
-                    _budget = budget.Token;
-                    return operation();
-                }, budget.Token);
+                MathS.Multithreading.SetLocalCancellationToken(budget.Token);
+                _budget = budget.Token;
+                try { value = operation(); }
+                catch (Exception ex) { error = ex; }
+            }, WorkerStack) { IsBackground = true, Name = "cas" };
+            worker.Start();
 
-                // Wait slightly longer than the budget. The token is the real mechanism; this
-                // only catches the case where a call ignores it between two check points, and
-                // keeps the request bounded either way.
-                if (!work.Wait(OperationBudget + TimeSpan.FromSeconds(2)))
-                    return onFailure(GaveUpMessage);
+            // Wait slightly longer than the budget. The token is the real mechanism; this only
+            // catches a call that ignores it between two check points, and keeps the request
+            // bounded either way.
+            if (!worker.Join(OperationBudget + TimeSpan.FromSeconds(2)))
+                return onFailure(GaveUpMessage);
+            if (error is not null)
+                return onFailure(error is OperationCanceledException ? GaveUpMessage : Describe(error));
 
-                return onSuccess(work.Result);
-            }
-            catch (Exception ex)
-            {
-                Exception inner = (ex as AggregateException)?.InnerException ?? ex;
-                return onFailure(inner is OperationCanceledException or TaskCanceledException
-                    ? GaveUpMessage
-                    : inner.Message);
-            }
+            try { return onSuccess(value); }
+            catch (Exception ex) { return onFailure(Describe(ex)); }
         }
+
+        /// <summary>Stack for each operation's thread: 256 MB of address space, used only as deep as the input recurses.</summary>
+        private const int WorkerStack = 256 * 1024 * 1024;
 
         /// <summary>
         /// The budget of the operation running on this thread, for code in this class that

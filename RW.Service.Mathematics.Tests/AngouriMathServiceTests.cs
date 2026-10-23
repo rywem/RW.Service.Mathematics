@@ -7,6 +7,29 @@ namespace RW.Service.Mathematics.Tests
     {
         private readonly AngouriMathService _svc = new();
 
+        /// <summary>
+        /// The basic operations run under the same budget as the advanced ones. On a Pi one
+        /// runaway integral held a core for minutes (this one did, unbudgeted).
+        /// </summary>
+        [Fact]
+        public void Integrate_OfAHardRationalFunction_GivesUpWithinTheBudget()
+        {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            var r = _svc.Integrate("1/(x^12 + x^7 + 3)");   // overflowed the stack and killed the process
+            clock.Stop();
+
+            Assert.True(clock.Elapsed < AngouriMathService.OperationBudget * 2, $"took {clock.Elapsed}");
+            if (!r.Success) Assert.Contains("Gave up", r.Error);
+        }
+
+        [Fact]
+        public void BasicOperations_StillReportParseErrors()
+        {
+            var r = _svc.Simplify("2 +* (");
+            Assert.False(r.Success);
+            Assert.False(string.IsNullOrWhiteSpace(r.Error));
+        }
+
         /// <summary>Strip spaces and explicit multiplication so we can compare canonical shapes.</summary>
         private static string Norm(string s) => s.Replace(" ", "").Replace("*", "");
 
