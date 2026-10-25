@@ -68,25 +68,6 @@ namespace RW.Service.Mathematics.Solvers
             });
 
         /// <summary>
-        /// Maxima's <c>diff(expr, var, n)</c>. Differentiating n times is exactly what the
-        /// single-step operation repeated n times means, and AngouriMath's own nth-derivative
-        /// entry point is marked obsolete, so this composes the supported one.
-        /// </summary>
-        public AlgebraResult Derivative(string expression, string variable, int order = 1)
-            => Run(expression, () =>
-            {
-                if (order is < 1 or > 20)
-                    throw new ArgumentException("Order must be between 1 and 20.");
-
-                Variable v = MathS.Var(Named(variable));
-                Entity result = Parse(expression);
-                for (int i = 0; i < order; i++)
-                    result = result.Differentiate(v);
-
-                return result.Simplify();
-            });
-
-        /// <summary>
         /// Maxima's <c>integrate(expr, var, a, b)</c>. The bounds are expressions, so
         /// <c>pi</c>, <c>2*pi</c> and <c>e</c> all work.
         /// </summary>

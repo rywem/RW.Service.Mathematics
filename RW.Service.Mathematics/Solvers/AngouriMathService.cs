@@ -24,9 +24,24 @@ namespace RW.Service.Mathematics.Solvers
         public AlgebraResult Factor(string expression)
             => Transform(expression, e => e.Factorize());
 
-        /// <summary>Differentiate with respect to <paramref name="variable"/> (default x).</summary>
-        public AlgebraResult Differentiate(string expression, string variable = "x")
-            => Transform(expression, e => e.Differentiate(MathS.Var(variable)).Simplify());
+        /// <summary>
+        /// Differentiate <paramref name="order"/> times with respect to <paramref name="variable"/>
+        /// (default x, once; an empty variable also means x), like Maxima's <c>diff(expr, var, n)</c>.
+        /// AngouriMath's own nth-derivative entry point is obsolete, so this repeats the single step.
+        /// </summary>
+        public AlgebraResult Differentiate(string expression, string variable = "x", int order = 1)
+            => Run(expression, () =>
+            {
+                if (order is < 1 or > 20)
+                    throw new ArgumentException("Order must be between 1 and 20.");
+
+                Variable v = MathS.Var(Named(variable));
+                Entity result = Parse(expression);
+                for (int i = 0; i < order; i++)
+                    result = result.Differentiate(v);
+
+                return result.Simplify();
+            });
 
         /// <summary>Indefinite integral with respect to <paramref name="variable"/> (default x).</summary>
         public AlgebraResult Integrate(string expression, string variable = "x")

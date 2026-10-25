@@ -102,7 +102,7 @@ namespace RW.Service.Mathematics.Tests
         [InlineData("x^4", 5, "0")]
         public void Derivative_RepeatsToTheRequestedOrder(string expression, int order, string expected)
         {
-            var r = _svc.Derivative(expression, "x", order);
+            var r = _svc.Differentiate(expression, "x", order);
             Assert.True(r.Success, r.Error);
             Assert.Equal(expected, Norm(r.Result));
         }
@@ -110,8 +110,8 @@ namespace RW.Service.Mathematics.Tests
         [Fact]
         public void Derivative_RefusesAnUnreasonableOrder()
         {
-            Assert.False(_svc.Derivative("x^2", "x", 0).Success);
-            Assert.False(_svc.Derivative("x^2", "x", 21).Success);
+            Assert.False(_svc.Differentiate("x^2", "x", 0).Success);
+            Assert.False(_svc.Differentiate("x^2", "x", 21).Success);
         }
 
         // ---------------------------------------------------------------- definite integral
@@ -267,7 +267,7 @@ namespace RW.Service.Mathematics.Tests
         {
             Assert.False(_svc.Limit(string.Empty, "x", "0").Success);
             Assert.False(_svc.Taylor(string.Empty, "x").Success);
-            Assert.False(_svc.Derivative(string.Empty, "x").Success);
+            Assert.False(_svc.Differentiate(string.Empty, "x").Success);
             Assert.False(_svc.Substitute(string.Empty, "x", "1").Success);
             Assert.False(_svc.FactorInteger(string.Empty).Success);
         }
@@ -275,8 +275,8 @@ namespace RW.Service.Mathematics.Tests
         [Fact]
         public void AVariableIsAssumedToBeXWhenNotNamed()
         {
-            var named = _svc.Derivative("x^2", "x");
-            var unnamed = _svc.Derivative("x^2", string.Empty);
+            var named = _svc.Differentiate("x^2", "x");
+            var unnamed = _svc.Differentiate("x^2", string.Empty);
             Assert.Equal(named.Result, unnamed.Result);
         }
     }
